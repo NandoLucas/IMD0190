@@ -10,23 +10,35 @@ from langchain.tools import tool
 from collections import Counter
 from pydantic import BaseModel, Field
 from typing import Union, List, Literal
+from dotenv import load_dotenv
 
-# insert your gemini api key here
-gemini_api_key = ""
+
+load_dotenv()
+
+# Coleta a chave GEMINI_API_KEY do .env
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+
+
 gemini = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     google_api_key=gemini_api_key,
     temperature=0.0
     )
-class SentimentAnalysisResponse(BaseModel):
-    """The response of a function that performs sentiment analysis on text."""
 
-    # The sentiment label assigned to the text
+
+class SentimentAnalysisResponse(BaseModel):
+    """A resposta de uma função que realiza análise de sentimento em um texto."""
+
+    # A classe do sentimento associado ao texto
     sentiment: Literal["positive", "neutral", "negative"] = Field(
         default_factory=str,
         description="The sentiment label assigned to the text. You can only have 'positive', 'neutral' or 'negative' as values.",
     )
+
+
 model_sentiment_gemini = gemini.with_structured_output(SentimentAnalysisResponse)
+
+
 @tool
 def analyze_sentiment(texts: Union[str, List[str]]) -> dict:
     """
@@ -40,7 +52,7 @@ def analyze_sentiment(texts: Union[str, List[str]]) -> dict:
 
     elif isinstance(texts, list):
         # Caso seja uma lista, processa cada um e gera um resumo da contagem
-        sentiment_counts = Counter()
+        sentiment_counts: Counter = Counter()
         individual_results = []
 
         for text in texts:
@@ -52,6 +64,7 @@ def analyze_sentiment(texts: Union[str, List[str]]) -> dict:
             "individual_results": individual_results,
             "total_counts": dict(sentiment_counts)
         }
+    
 
 # 🔹 Configuração do Agente
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
@@ -73,6 +86,7 @@ agent = create_tool_calling_agent(
     prompt=prompt
 )
 
+# Criação do AgentExecutor
 agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory)
 
 # 🔹 Interface no Streamlit
@@ -104,7 +118,7 @@ if st.button("Executar Análise"):
             else:
                 result = {"error": "Nenhum input fornecido"}
 
-            #st.subheader("🔍 Debug: Resposta Bruta do Agente")
+            # st.subheader("🔍 Debug: Resposta Bruta do Agente")
             st.write(result)  # Mostra a resposta bruta para depuração
 
         except Exception as e:
